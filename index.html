@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>ことばクエスト</title>
+<style>
+:root{
+  --ai:#25406b; --ai2:#35578c; --shu:#e05a4f; --kin:#d8a13a; --nazuna:#f7f3e8;
+  --sumi:#2c2a26; --usu:#efe7d6; --midori:#4d8c6a; --murasaki:#7a5ca8;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  user-select:none;-webkit-user-select:none;touch-action:manipulation}
+html,body{height:100%}
+body{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;background:var(--ai);color:var(--sumi);
+  min-height:100dvh;overflow:hidden}
+button{font-family:inherit;cursor:pointer;border:none}
+/* 和紙背景 */
+#app{position:fixed;inset:0;background:
+  radial-gradient(circle at 20% 10%,#ffffff10,transparent 45%),
+  radial-gradient(circle at 80% 90%,#ffffff10,transparent 45%),
+  linear-gradient(160deg,#25406b,#1b2f52 60%,#2b3f6b);
+  display:flex;flex-direction:column;overflow:hidden}
+.scr{display:none;flex:1;flex-direction:column;overflow-y:auto;
+  padding:calc(14px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom))}
+.scr.on{display:flex}
+.wrap{width:100%;max-width:520px;margin:0 auto}
+
+/* ===== ホーム ===== */
+.logo{text-align:center;color:#fff;margin:6px 0 12px}
+.logo h1{font-size:30px;letter-spacing:5px;text-shadow:0 3px 0 #00000040}
+.logo .sub{font-size:11px;letter-spacing:4px;color:#c8d6ef;margin-top:4px}
+.statcard{background:var(--nazuna);border-radius:18px;padding:12px 14px;display:flex;align-items:center;gap:12px;
+  box-shadow:0 5px 0 #00000030}
+.statcard .rk{font-size:32px}
+.statcard .info{flex:1}
+.statcard .rname{font-weight:800;font-size:15px}
+.statcard .lvbar{height:7px;background:#dfd6c0;border-radius:99px;margin-top:5px;overflow:hidden}
+.statcard .lvbar i{display:block;height:100%;background:linear-gradient(90deg,var(--kin),#f0c96a);transition:width .4s}
+.statcard .num{text-align:right;font-size:11px;line-height:1.5;font-weight:800;color:#6b6250}
+.statcard .num b{font-size:19px;color:var(--shu);display:block}
+
+.hero{width:100%;margin:14px 0 10px;background:linear-gradient(180deg,#ef6a5c,#d94a3f);
+  color:#fff;border-radius:22px;padding:20px 18px;box-shadow:0 6px 0 #a8362d,0 10px 20px #00000040;
+  display:flex;align-items:center;gap:14px;animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+.hero:active{transform:translateY(4px);box-shadow:0 2px 0 #a8362d}
+.hero .em{font-size:38px}
+.hero .tx{flex:1;text-align:left}
+.hero .t1{font-size:22px;font-weight:800;letter-spacing:2px}
+.hero .t2{font-size:11px;opacity:.9;margin-top:3px}
+.hero .go{font-size:26px}
+
+.daily{background:#ffffff14;border:1px solid #ffffff28;border-radius:14px;padding:10px 14px;color:#e8eefb;
+  font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.daily .dbar{flex:1;height:8px;background:#00000030;border-radius:99px;overflow:hidden;margin:0 6px}
+.daily .dbar i{display:block;height:100%;background:linear-gradient(90deg,var(--midori),#7fd3a3);transition:width .4s}
+
+.sect{color:#c8d6ef;font-size:12px;font-weight:800;letter-spacing:2px;margin:16px 0 8px;
+  border-left:3px solid var(--kin);padding-left:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tile{background:var(--nazuna);border-radius:16px;padding:12px 10px;text-align:center;
+  box-shadow:0 4px 0 #00000030;font-weight:800;font-size:13px;color:var(--sumi)}
+.tile:active{transform:translateY(3px);box-shadow:0 1px 0 #00000030}
+.tile .em{font-size:26px;display:block;margin-bottom:3px}
+.tile .n{font-size:10px;color:#877c66;font-weight:700;display:block;margin-top:3px}
+.tile.weak{background:linear-gradient(180deg,#ffe8b0,#ffd47a)}
+.tile.time{background:linear-gradient(180deg,#cfe4ff,#a9c9f5)}
+.tile.rev{background:linear-gradient(180deg,#d9f0e0,#aee0c2)}
+.tile:disabled{opacity:.45}
+
+/* ===== ドリル ===== */
+#scr-drill{padding-top:calc(10px + env(safe-area-inset-top))}
+.dhead{display:flex;align-items:center;gap:10px;color:#e8eefb;font-size:13px;font-weight:800;margin-bottom:8px}
+.dhead .x{background:#ffffff20;border-radius:10px;padding:6px 10px;color:#fff;font-size:12px}
+.dhead .ttl{flex:1;text-align:center}
+.dhead .pg{font-size:12px;opacity:.85}
+.pbar{height:6px;background:#ffffff20;border-radius:99px;overflow:hidden;margin-bottom:12px}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--kin),#f5d98a);transition:width .3s}
+#dTimer{text-align:center;color:#fff;font-size:22px;font-weight:800;margin-bottom:6px;display:none}
+#dCombo{color:#ffd166;font-weight:800;font-size:13px;min-width:44px;text-align:right}
+
+.qcard{background:var(--nazuna);border-radius:20px;padding:22px 18px;text-align:center;
+  box-shadow:0 6px 0 #00000030;margin-bottom:14px;position:relative}
+.qcat{font-size:11px;font-weight:800;color:#fff;background:var(--ai2);border-radius:99px;
+  padding:3px 12px;display:inline-block;margin-bottom:12px}
+.qtext{font-size:26px;font-weight:800;line-height:1.75;letter-spacing:1px;min-height:74px;
+  display:flex;align-items:center;justify-content:center}
+.qtext.sm{font-size:20px}
+.qtext em{font-style:normal;color:var(--shu);border-bottom:3px solid var(--shu);padding:0 2px}
+.qtext ruby rt{font-size:.45em;color:#7a7060}
+
+#opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{background:#fff;border-radius:16px;padding:18px 8px;font-size:18px;font-weight:800;color:var(--sumi);
+  box-shadow:0 5px 0 #b9ac90;min-height:64px;border:2px solid #e3d9c2;transition:transform .06s}
+.opt.big{font-size:30px;padding:14px 8px}
+.opt:active{transform:translateY(3px);box-shadow:0 2px 0 #b9ac90}
+.opt.ok{background:#bff0cf;border-color:#4faa72;box-shadow:0 5px 0 #4faa72;animation:pop .3s}
+.opt.ng{background:#ffc9c4;border-color:#d9534a;box-shadow:0 5px 0 #d9534a;animation:shk .3s}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes shk{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* ===== 解説 ===== */
+.ov{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
+  background:#0009;backdrop-filter:blur(3px);padding:16px}
+.ov.on{display:flex}
+.expbox{width:100%;max-width:460px;background:var(--nazuna);border-radius:22px;padding:20px 18px;
+  box-shadow:0 10px 30px #00000060;animation:rise .25s;max-height:88dvh;overflow-y:auto}
+@keyframes rise{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.expbox .ttl{text-align:center;font-weight:800;font-size:15px;color:var(--shu);margin-bottom:10px}
+.expbox .qq{background:#fff;border-radius:14px;padding:14px;font-size:19px;font-weight:800;
+  text-align:center;line-height:1.7;border:2px solid #e3d9c2}
+.expbox .qq em{font-style:normal;color:var(--shu);border-bottom:3px solid var(--shu)}
+.expbox .aa{background:#fff3d1;border:2px solid var(--kin);border-radius:14px;padding:12px;
+  font-size:18px;font-weight:800;text-align:center;margin-top:10px}
+.expbox .hh{background:#eaf2ff;border-left:4px solid var(--ai2);border-radius:10px;padding:11px 13px;
+  font-size:13px;line-height:1.9;margin-top:10px;font-weight:600}
+.btn{width:100%;background:var(--ai2);color:#fff;border-radius:16px;padding:14px;font-size:16px;
+  font-weight:800;box-shadow:0 5px 0 #1d3career;box-shadow:0 5px 0 #1b3career}
+.btn{box-shadow:0 5px 0 #1b3358}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #1b3358}
+.btn.shu{background:var(--shu);box-shadow:0 5px 0 #a8362d}
+.btn.shu:active{box-shadow:0 2px 0 #a8362d}
+.btn.ghost{background:#ffffff;color:var(--ai);box-shadow:0 5px 0 #b9ac90}
+.btn.ghost:active{box-shadow:0 2px 0 #b9ac90}
+.btn+.btn{margin-top:9px}
+
+/* ===== 結果 ===== */
+#scr-result .wrap{text-align:center;padding-top:8px}
+#rTitle{color:#fff;font-size:24px;font-weight:800;margin:10px 0}
+#rScore{font-size:52px;font-weight:800;color:var(--kin);letter-spacing:2px;text-shadow:0 3px 0 #00000040}
+#rSub{color:#dde6f7;font-size:13px;font-weight:700;line-height:2;margin:8px 0 16px}
+#rSub .rtot{color:#ffd166}
+#rReview{margin-bottom:9px}
+
+/* ===== 一覧・記録 ===== */
+.list .row{background:var(--nazuna);border-radius:14px;padding:11px 14px;margin-bottom:8px;
+  display:flex;align-items:center;gap:11px;font-weight:800;font-size:14px}
+.list .row .em{font-size:22px}
+.list .row .m{flex:1}
+.list .row small{display:block;font-size:10px;color:#877c66;font-weight:700;margin-top:2px}
+.list .row .go{color:var(--shu);font-size:15px}
+.list .row.done{background:#e5f2e9}
+.medalgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.medal{background:var(--nazuna);border-radius:14px;padding:11px 4px;text-align:center;font-size:26px}
+.medal.no{opacity:.25;filter:grayscale(1)}
+.medal small{display:block;font-size:8px;font-weight:800;color:#6b6250;margin-top:3px}
+.backb{background:#ffffff20;color:#fff;border-radius:12px;padding:8px 14px;font-size:13px;font-weight:800;
+  margin-bottom:12px;align-self:flex-start}
+
+.toast{position:fixed;left:50%;top:12%;transform:translateX(-50%);background:var(--kin);color:#4a3400;
+  font-weight:800;font-size:15px;padding:10px 22px;border-radius:99px;z-index:60;
+  box-shadow:0 4px 14px #00000060;animation:tin 1.8s forwards;white-space:nowrap}
+@keyframes tin{0%{transform:translate(-50%,-24px);opacity:0}12%{transform:translate(-50%,0);opacity:1}82%{opacity:1}100%{opacity:0}}
+.conf{position:fixed;top:-24px;font-size:20px;z-index:70;pointer-events:none;animation:cf linear forwards}
+@keyframes cf{to{transform:translateY(110vh) rotate(680deg)}}
+#muteBtn{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:30;
+  background:#ffffff20;color:#fff;border-radius:12px;padding:7px 10px;font-size:15px}
+</style>
+</head>
+<body>
+<div id="app">
+  <button id="muteBtn">🔊</button>
+
+  <!-- ホーム -->
+  <section class="scr on" id="scr-home"><div class="wrap">
+    <div class="logo"><h1>ことばクエスト</h1><div class="sub">こくご　語句・漢字・慣用句</div></div>
+
+    <div class="statcard">
+      <span class="rk" id="hRank">🐣</span>
+      <div class="info">
+        <div class="rname"><span id="hRankName">ことば見習い</span>　<span style="font-size:11px;color:#877c66">Lv.<span id="hLv">1</span></span></div>
+        <div class="lvbar"><i id="hXp" style="width:0%"></i></div>
+      </div>
+      <div class="num">とっぱ数<b id="hTotal">0</b></div>
+    </div>
+
+    <button class="hero" id="startBtn">
+      <span class="em">⚔️</span>
+      <span class="tx"><span class="t1">とっくん スタート</span><span class="t2">10問 ／ にがてを ゆうせん出題</span></span>
+      <span class="go">▶</span>
+    </button>
+
+    <div class="daily">
+      <span>きょう <b id="dNum">0</b>問</span>
+      <span class="dbar"><i id="dBarH" style="width:0%"></i></span>
+      <span>目標 <span id="dGoal">30</span>問</span>
+    </div>
+
+    <div class="sect">じぶんで えらぶ</div>
+    <div class="grid2">
+      <button class="tile weak" id="weakBtn"><span class="em">😤</span>にがて集中<span class="n" id="weakN">0問たまってる</span></button>
+      <button class="tile time" id="timeBtn"><span class="em">⏱️</span>タイムアタック<span class="n" id="timeN">30秒で何問？</span></button>
+      <button class="tile rev" id="kaiBtn"><span class="em">📚</span>回べつに とく<span class="n" id="kaiN">テキストの回</span></button>
+      <button class="tile" id="catBtn"><span class="em">🗂️</span>分野べつ<span class="n">漢字・語句・慣用句…</span></button>
+    </div>
+
+    <div class="sect">きろく</div>
+    <div class="grid2">
+      <button class="tile" id="medalBtn"><span class="em">🏅</span>メダル<span class="n" id="medalN">0/7</span></button>
+      <button class="tile" id="statBtn"><span class="em">📊</span>せいせき<span class="n" id="statN">正答率</span></button>
+    </div>
+    <p style="color:#8fa4c9;font-size:10px;text-align:center;margin-top:14px;line-height:1.8">
+      出典：塾テキストの語句・漢字ページを教材化<br>まちがえた問題は じどうで「にがて」に たまります
+    </p>
+  </div></section>
+
+  <!-- ドリル -->
+  <section class="scr" id="scr-drill"><div class="wrap">
+    <div class="dhead">
+      <button class="x" id="quitBtn">✕ やめる</button>
+      <span class="ttl" id="drillTitle">とっくん</span>
+      <span class="pg" id="dProg">1 / 10</span>
+      <span id="dCombo"></span>
+    </div>
+    <div class="pbar"><i id="dBar" style="width:0%"></i></div>
+    <div id="dTimer"></div>
+    <div class="qcard">
+      <span class="qcat" id="qCat"></span>
+      <div class="qtext" id="qText"></div>
+    </div>
+    <div id="opts"></div>
+  </div></section>
+
+  <!-- 結果 -->
+  <section class="scr" id="scr-result"><div class="wrap">
+    <div id="rTitle"></div>
+    <div id="rScore"></div>
+    <div id="rSub"></div>
+    <div id="rReview"></div>
+    <button class="btn shu" id="rAgain">もう1セット ▶</button>
+    <button class="btn ghost" id="rHome">ホームへ</button>
+  </div></section>
+
+  <!-- 一覧（回別・分野別・メダル・成績を使い回し） -->
+  <section class="scr" id="scr-list"><div class="wrap">
+    <button class="backb" id="lBack">← もどる</button>
+    <div class="sect" id="lTitle"></div>
+    <div id="lBody" class="list"></div>
+  </div></section>
+</div>
+
+<!-- 解説 -->
+<div class="ov" id="expOv"><div class="expbox">
+  <div class="ttl">📖 かいせつ　<span id="expCat" style="font-size:11px;color:#877c66"></span></div>
+  <div class="qq" id="expQ"></div>
+  <div class="aa" id="expA"></div>
+  <div class="hh" id="expH"></div>
+  <button class="btn" id="expNext" style="margin-top:14px">つぎへ ▶</button>
+  <div style="text-align:center;font-size:10px;color:#877c66;margin-top:8px">この問題は「にがて」に とうろくされました</div>
+</div></div>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script>
+/* ---------- 画面の配線 ---------- */
+function renderHome(){
+  const r=rankOf(S.total);
+  $("hRank").textContent=r[2]; $("hRankName").textContent=r[1];
+  $("hLv").textContent=S.lv;
+  $("hXp").style.width=Math.min(100,S.xp/xpNeed(S.lv)*100)+"%";
+  $("hTotal").textContent=S.total;
+  $("dNum").textContent=S.daily.n;
+  $("dBarH").style.width=Math.min(100,S.daily.n/30*100)+"%";
+  const wn=Object.keys(S.weak).filter(id=>S.weak[id].miss>0).length;
+  $("weakN").textContent=wn?wn+"問 たまってる":"まだ ないよ";
+  $("weakBtn").disabled=!wn;
+  $("medalN").textContent=S.medals.length+"/"+MEDALS.length;
+  const rate=S.total?Math.round(S.correct/S.total*100):0;
+  $("statN").textContent="正答率 "+rate+"%";
+  $("kaiN").textContent=KAI.length+"回ぶん";
+  $("muteBtn").textContent=S.mute?"🔇":"🔊";
+}
+$("muteBtn").onclick=()=>{S.mute=!S.mute;save();renderHome();};
+$("startBtn").onclick=()=>{sfx.tap();startDrill("mix",10);};
+$("weakBtn").onclick=()=>{sfx.tap();startDrill("weak",10);};
+$("timeBtn").onclick=()=>{sfx.tap();startDrill("mix",99,{timed:true,limit:30,title:"⏱️ タイムアタック30秒"});};
+$("quitBtn").onclick=()=>{sfx.tap();if(D&&D.timer)clearInterval(D.timer);D=null;show("home");};
+$("rHome").onclick=()=>{sfx.tap();show("home");};
+$("lBack").onclick=()=>{sfx.tap();show("home");};
+
+function listScreen(title,rows){
+  $("lTitle").textContent=title;
+  const b=$("lBody");b.innerHTML="";
+  rows.forEach(r=>b.appendChild(r));
+  show("list");
+}
+function rowEl(em,main,sub,onTap,done){
+  const d=document.createElement("div");
+  d.className="row"+(done?" done":"");
+  d.innerHTML=`<span class="em">${em}</span><span class="m">${main}<small>${sub||""}</small></span><span class="go">▶</span>`;
+  d.onclick=()=>{sfx.tap();onTap();};
+  return d;
+}
+$("kaiBtn").onclick=()=>{sfx.tap();
+  listScreen("📚 回べつに とく", KAI.map(k=>{
+    const n=QUESTIONS.filter(q=>q.kai===k.id).length;
+    const c=S.cleared[k.id];
+    return rowEl(k.em||"📗",k.name,`${n}問`+(c?`　さいこう ${c.best}/${c.n}`:""),
+      ()=>startDrill("kai:"+k.id,Math.min(n,10),{title:k.name}), c&&c.best===c.n);
+  }));
+};
+$("catBtn").onclick=()=>{sfx.tap();
+  const cats=[...new Set(QUESTIONS.map(q=>q.t))];
+  listScreen("🗂️ 分野べつに とく", cats.map(c=>{
+    const n=QUESTIONS.filter(q=>q.t===c).length;
+    return rowEl(catEm[c]||"📘",catName[c]||c,n+"問",()=>startDrill(c,10));
+  }));
+};
+$("medalBtn").onclick=()=>{sfx.tap();
+  $("lTitle").textContent="🏅 メダル";
+  const b=$("lBody");b.innerHTML="";
+  const g=document.createElement("div");g.className="medalgrid";
+  MEDALS.forEach(m=>{
+    const has=S.medals.includes(m.id);
+    const d=document.createElement("div");d.className="medal"+(has?"":" no");
+    d.innerHTML=`${m.em}<small>${m.t}</small>`;g.appendChild(d);
+  });
+  b.appendChild(g);
+  const p=document.createElement("p");
+  p.style.cssText="color:#c8d6ef;font-size:12px;text-align:center;margin-top:14px;line-height:2";
+  p.innerHTML=`つうさん <b style="color:#ffd166">${S.total}</b> 問といた！<br>つぎのメダルまで あと ${(MEDALS.find(m=>!S.medals.includes(m.id))?.n||S.total)-S.total} 問`;
+  b.appendChild(p);
+  show("list");
+};
+$("statBtn").onclick=()=>{sfx.tap();
+  $("lTitle").textContent="📊 せいせき";
+  const b=$("lBody");b.innerHTML="";
+  const rate=S.total?Math.round(S.correct/S.total*100):0;
+  const box=document.createElement("div");
+  box.className="row";
+  box.innerHTML=`<span class="m" style="line-height:2.1">
+    つうさん といた数：<b>${S.total}</b> 問<br>
+    せいかい：<b>${S.correct}</b> 問（正答率 <b>${rate}%</b>）<br>
+    さいこうれんぞく：<b>${S.streakBest}</b> 問<br>
+    きょう：<b>${S.daily.n}</b> 問<br>
+    にがて：<b>${Object.keys(S.weak).filter(id=>S.weak[id].miss>0).length}</b> 問</span>`;
+  b.appendChild(box);
+  const cats=[...new Set(QUESTIONS.map(q=>q.t))];
+  cats.forEach(c=>{
+    const n=QUESTIONS.filter(q=>q.t===c).length;
+    const w=QUESTIONS.filter(q=>q.t===c&&S.weak[q.id]?.miss>0).length;
+    b.appendChild(rowEl(catEm[c]||"📘",catName[c]||c,`${n}問中 にがて ${w}問`,()=>startDrill(c,10)));
+  });
+  show("list");
+};
+renderHome();
+</script>
+</body>
+</html>
