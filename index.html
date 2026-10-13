@@ -114,6 +114,18 @@ button{font-family:inherit;cursor:pointer;border:none}
 .expbox .qq em{font-style:normal;color:var(--shu);border-bottom:3px solid var(--shu)}
 .expbox .aa{background:#fff3d1;border:2px solid var(--kin);border-radius:14px;padding:12px;
   font-size:18px;font-weight:800;text-align:center;margin-top:10px}
+.expbox{max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.lc-sec{margin-top:8px;border-radius:12px;padding:9px 11px;background:#fff;border-left:4px solid #ccc;text-align:left}
+.lc-t{font-size:11px;font-weight:800;color:#8a7f90;margin-bottom:3px}
+.lc-b{font-size:14px;line-height:1.75;font-weight:600;color:#333}
+.lc-sec.imi{border-color:#f5a623;background:#fff7e6}
+.lc-sec.parts{border-color:#4a90d9;background:#eef5ff}
+.lc-sec.chigai{border-color:#e8455f;background:#fff0f2}
+.lc-sec.rei{border-color:#5ec49a;background:#eefbf4}
+.lc-sec.nyushi{border-color:#9b59b6;background:#f6eefc}
+.lc-sec.oboe{border-color:#f06292;background:#fff0f6}
+.lc-rei{padding:1px 0}
+.tile.jissen{background:linear-gradient(135deg,#fff0f6,#ffe3ee);border-color:#f3a6c4}
 .expbox .hh{background:#eaf2ff;border-left:4px solid var(--ai2);border-radius:10px;padding:11px 13px;
   font-size:13px;line-height:1.9;margin-top:10px;font-weight:600}
 .btn{width:100%;background:var(--ai2);color:#fff;border-radius:16px;padding:14px;font-size:16px;
@@ -194,6 +206,7 @@ button{font-family:inherit;cursor:pointer;border:none}
       <button class="tile time" id="timeBtn"><span class="em">⏱️</span>タイムアタック<span class="n" id="timeN">30秒で何問？</span></button>
       <button class="tile rev" id="kaiBtn"><span class="em">📚</span>回べつに とく<span class="n" id="kaiN">テキストの回</span></button>
       <button class="tile" id="catBtn"><span class="em">🗂️</span>分野べつ<span class="n">漢字・語句・慣用句…</span></button>
+      <button class="tile jissen" id="jissenBtn"><span class="em">🏫</span>実践女子もぎ<span class="n">書き5・読み4・知識2</span></button>
     </div>
 
     <div class="sect">きろく</div>
@@ -252,6 +265,8 @@ button{font-family:inherit;cursor:pointer;border:none}
 </div></div>
 
 <script src="data.js"></script>
+<script src="deep.js"></script>
+<script src="learncard.js"></script>
 <script src="engine.js"></script>
 <script>
 /* ---------- 画面の配線 ---------- */
@@ -264,7 +279,7 @@ function renderHome(){
   $("dNum").textContent=S.daily.n;
   $("dBarH").style.width=Math.min(100,S.daily.n/30*100)+"%";
   const wn=Object.keys(S.weak).filter(id=>S.weak[id].miss>0).length;
-  $("weakN").textContent=wn?wn+"問 たまってる":"まだ ないよ";
+  $("weakN").textContent=wn?lcNextLabel(S.weak):"まだ ないよ";
   $("weakBtn").disabled=!wn;
   $("medalN").textContent=S.medals.length+"/"+MEDALS.length;
   const rate=S.total?Math.round(S.correct/S.total*100):0;
@@ -276,6 +291,7 @@ $("muteBtn").onclick=()=>{S.mute=!S.mute;save();renderHome();};
 $("startBtn").onclick=()=>{sfx.tap();startDrill("mix",10);};
 $("weakBtn").onclick=()=>{sfx.tap();startDrill("weak",10);};
 $("timeBtn").onclick=()=>{sfx.tap();startDrill("mix",99,{timed:true,limit:30,title:"⏱️ タイムアタック30秒"});};
+$("jissenBtn").onclick=()=>{sfx.tap();startDrill("jissen",11,{title:"🏫 実践女子もぎ（大問二の型）"});};
 $("quitBtn").onclick=()=>{sfx.tap();if(D&&D.timer)clearInterval(D.timer);D=null;show("home");};
 $("rHome").onclick=()=>{sfx.tap();show("home");};
 $("lBack").onclick=()=>{sfx.tap();show("home");};

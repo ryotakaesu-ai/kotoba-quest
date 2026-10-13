@@ -14,12 +14,12 @@ const DEF = {
   weak: {},        // id -> {miss:回数, due:あと何セットで再出題}
   cleared: {},     // 回ID -> {best:正答数, n:問題数, times:[秒]}
   daily: { d: "", n: 0 },   // 今日の解答数
-  medals: [], mute: false, lastPlay: ""
+  medals: [], mute: false, lastPlay: "", seen: {}
 };
 let S;
 try { S = Object.assign({}, DEF, JSON.parse(localStorage.getItem("kotobaQuest") || "{}")); }
 catch (e) { S = { ...DEF }; }
-S.weak = S.weak || {}; S.cleared = S.cleared || {}; S.daily = S.daily || { d: "", n: 0 };
+S.weak = S.weak || {}; S.cleared = S.cleared || {}; S.daily = S.daily || { d: "", n: 0 }; S.seen = S.seen || {};
 const save = () => localStorage.setItem("kotobaQuest", JSON.stringify(S));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 if (S.daily.d !== todayStr()) { S.daily = { d: todayStr(), n: 0 }; }
@@ -91,13 +91,18 @@ const catName = {
   kanyo: "慣用句", taigi: "対義語", ruigi: "類義語", yoji: "四字熟語", kotowaza: "ことわざ",
   bunpo: "ことばのきまり", bungaku: "文学史", keigo: "敬語", bushu: "部首",
   giongo: "擬音語・擬態語", goyo: "ことばの誤り", jukugo: "熟語の組み立て",
-  sanji: "三字熟語", gairai: "外来語", fukushi: "呼応の副詞", wago: "ことばの意味", kana: "かなづかい"
+  sanji: "三字熟語", gairai: "外来語", fukushi: "呼応の副詞", wago: "ことばの意味", kana: "かなづかい",
+  aimai: "あいまいな文の読み分け", chugoku: "中国のことわざ", iro: "色の漢字の慣用表現", kokoro: "心・気・目の慣用表現",
+  shoryaku: "省略語のもとの形", yojierr: "四字熟語の誤字訂正", kaki2: "実践女子レベルの書き取り", yomi2: "慣用的な読み",
+  shikibetsu: "同じ働きの言葉", bushuimi: "部首の名前と意味", yomikata: "熟語の読み方の種類"
 };
 const catEm = {
   kaki: "✏️", yomi: "📖", doon: "🔍", dokun: "🖌️", goku: "🧠", kanyo: "🖐️", taigi: "⚖️", ruigi: "🤝",
   yoji: "🈲", kotowaza: "🦉", bunpo: "📐", bungaku: "📜", keigo: "🙇", bushu: "🈚",
   giongo: "💨", goyo: "⚠️", jukugo: "🧩", sanji: "3️⃣", gairai: "🌏", fukushi: "🔗",
-  wago: "🌾", kana: "🖊️"
+  wago: "🌾", kana: "🖊️",
+  aimai: "🔀", chugoku: "🐉", iro: "🎨", kokoro: "💓", shoryaku: "✂️", yojierr: "🔧",
+  kaki2: "🏫", yomi2: "👁️", shikibetsu: "🧭", bushuimi: "🧱", yomikata: "📚"
 };
 
 /* ---------- 出題セット生成 ---------- */
@@ -117,13 +122,34 @@ function buildSet(mode, n = 10) {
     pool = QUESTIONS.filter(q => q.t === mode);
   }
   if (!pool.length) pool = QUESTIONS;
-  // にがて問題を優先的に混ぜる（間隔反復）
-  const weakIds = Object.keys(S.weak).filter(id => S.weak[id].miss > 0);
-  const weakQ = pool.filter(q => weakIds.includes(q.id));
+  // 実践女子もぎ：書き取り5・読み4・言葉の知識2 の型で出す
+  if (mode === "jissen") {
+    const set = jissenSet(QUESTIONS, S.seen, (p, k) => leastSeen(p, k));
+    set.forEach(q => { S.seen[q.id] = (S.seen[q.id] || 0) + 1; });
+    save(); return set;
+  }
+  // 復習期限が来た問題（翌日・3日後・7日後）を優先的に混ぜる（最大30%）
+  const weakQ = lcDueList(S.weak, pool, Math.max(1, Math.round(n * 0.3)));
+  const weakIds = weakQ.map(q => q.id);
   const restQ = pool.filter(q => !weakIds.includes(q.id));
-  const nWeak = Math.min(weakQ.length, Math.max(1, Math.round(n * 0.3)));
-  const set = shuffle([...shuffle(weakQ).slice(0, nWeak), ...shuffle(restQ).slice(0, n - nWeak)]);
-  return set.length ? set : shuffle(pool).slice(0, n);
+  const nWeak = weakQ.length;
+  // 未出題を最優先に（一巡するまで 同じ問題を出さない）
+  const set = shuffle([...weakQ, ...leastSeen(restQ, n - nWeak)]);
+  set.forEach(q => { S.seen[q.id] = (S.seen[q.id] || 0) + 1; });
+  save();
+  return set.length ? set : leastSeen(pool, n);
+}
+/* 出題回数の少ない問題から選ぶ */
+function leastSeen(pool, n) {
+  S.seen = S.seen || {};
+  const bucket = {};
+  pool.forEach(q => { const c = S.seen[q.id] || 0; (bucket[c] = bucket[c] || []).push(q); });
+  const out = [];
+  Object.keys(bucket).map(Number).sort((a, b) => a - b).forEach(c => {
+    if (out.length >= n) return;
+    shuffle(bucket[c]).forEach(q => { if (out.length < n) out.push(q); });
+  });
+  return out;
 }
 
 /* ---------- ドリル本体 ---------- */
@@ -134,7 +160,7 @@ function startDrill(mode, n, opt = {}) {
     mode, qs, i: 0, ok: 0, combo: 0, best: 0, lock: false,
     t0: Date.now(), miss: [], timed: !!opt.timed, limit: opt.limit || 0, timer: null
   };
-  $("drillTitle").textContent = opt.title || (mode === "weak" ? "😤 にがて集中" : mode === "mix" ? "⚔️ ミックス" : (catEm[mode] || "📚") + " " + (catName[mode] || mode));
+  $("drillTitle").textContent = opt.title || (mode === "weak" ? "😤 にがて集中" : mode === "mix" ? "⚔️ ミックス" : mode === "jissen" ? "🏫 実践女子もぎ" : (catEm[mode] || "📚") + " " + (catName[mode] || mode));
   if (D.timed) {
     $("dTimer").style.display = "block";
     D.timer = setInterval(() => {
@@ -177,8 +203,8 @@ function answer(btn, chosen, q) {
     btn.classList.add("ok");
     D.combo >= 3 ? sfx.combo(D.combo) : sfx.ok();
     addXp(3 + Math.min(D.combo, 10));
-    // にがて解消
-    if (S.weak[q.id]) { S.weak[q.id].miss = Math.max(0, S.weak[q.id].miss - 1); if (!S.weak[q.id].miss) delete S.weak[q.id]; }
+    // にがて解消（翌日・3日後・7日後と 3回つづけて正解で卒業）
+    if (S.weak[q.id]) lcHit(S.weak, q.id);
     if (D.combo > 0 && D.combo % 5 === 0) toast("🔥 " + D.combo + "れんぞく！");
     save();
     setTimeout(() => { D.lock = false; advance(); }, 260);
@@ -187,7 +213,7 @@ function answer(btn, chosen, q) {
     btn.classList.add("ng");
     [...$("opts").children].forEach(b => { if (b.textContent === q.a) b.classList.add("ok"); });
     D.miss.push(q);
-    S.weak[q.id] = { miss: (S.weak[q.id]?.miss || 0) + 1 };
+    lcMiss(S.weak, q.id);
     save();
     setTimeout(() => showExp(q, () => { D.lock = false; advance(); }), 480);
   }
@@ -200,8 +226,9 @@ function showExp(q, cb) {
   $("expCat").textContent = (catEm[q.t] || "") + " " + (catName[q.t] || "");
   $("expQ").innerHTML = q.q;
   $("expA").innerHTML = "こたえ： <b>" + q.a + "</b>";
-  $("expH").innerHTML = q.h || "";
-  $("expH").style.display = q.h ? "block" : "none";
+  $("expH").innerHTML = learnHTML(q, true);
+  $("expH").style.display = "block";
+  $("expOv").scrollTop = 0;
   $("expOv").classList.add("on");
   $("expNext").onclick = () => { sfx.tap(); $("expOv").classList.remove("on"); cb(); };
 }
